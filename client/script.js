@@ -1,9 +1,43 @@
 const API_URL = 'http://localhost:3000';
+let authToken = localStorage.getItem('authToken');
 
-// Fetch all contacts
+// Add authentication check
+function checkAuth() {
+    if (!authToken) {
+        window.location.href = '/login.html';
+        return false;
+    }
+    return true;
+}
+
+// Update fetch headers with authentication
+async function fetchWithAuth(url, options = {}) {
+    if (!checkAuth()) return;
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+        ...options.headers
+    };
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        if (response.status === 401) {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login.html';
+            return;
+        }
+        return response;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+    }
+}
+
+// Update your existing functions to use fetchWithAuth
 async function fetchContacts() {
     try {
-        const response = await fetch(`${API_URL}/contacts`);
+        const response = await fetchWithAuth(`${API_URL}/contacts`);
         const contacts = await response.json();
         displayContacts(contacts);
     } catch (error) {
