@@ -1,49 +1,64 @@
 const API_URL = 'http://localhost:3000';
-let authToken = localStorage.getItem('authToken');
 
-// Add authentication check
+// Check if user is authenticated
 function checkAuth() {
-    if (!authToken) {
-        window.location.href = '/login.html';
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        window.location.href = 'login.html';
         return false;
     }
-    return true;
+    return token;
 }
 
-// Update fetch headers with authentication
-async function fetchWithAuth(url, options = {}) {
-    if (!checkAuth()) return;
+// Add new contact
+document.getElementById('addContactForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = checkAuth();
+    if (!token) return;
 
-    const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        ...options.headers
-    };
+    const name = document.getElementById('name').value;
+    const mobile = document.getElementById('mobile').value;
 
     try {
-        const response = await fetch(url, { ...options, headers });
-        if (response.status === 401) {
-            localStorage.removeItem('authToken');
-            window.location.href = '/login.html';
-            return;
+        const response = await fetch(`${API_URL}/contacts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ name, mobile }),
+        });
+
+        if (response.ok) {
+            document.getElementById('addContactForm').reset();
+            fetchContacts();
+        } else {
+            alert('Failed to create contact');
         }
-        return response;
     } catch (error) {
-        console.error('API Error:', error);
-        throw error;
+        console.error('Error adding contact:', error);
     }
-}
+});
 
-// Update your existing functions to use fetchWithAuth
+// Update fetchContacts function to include token
 async function fetchContacts() {
+    const token = checkAuth();
+    if (!token) return;
+
     try {
-        const response = await fetchWithAuth(`${API_URL}/contacts`);
+        const response = await fetch(`${API_URL}/contacts`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const contacts = await response.json();
         displayContacts(contacts);
     } catch (error) {
         console.error('Error fetching contacts:', error);
     }
 }
+
+// ... existing authentication and fetch code ...
 
 // Display contacts in the list
 function displayContacts(contacts) {
@@ -67,32 +82,11 @@ function displayContacts(contacts) {
     });
 }
 
-// Add new contact
-document.getElementById('addContactForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('name').value;
-    const mobile = document.getElementById('mobile').value;
-
-    try {
-        const response = await fetch(`${API_URL}/contacts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name, mobile }),
-        });
-
-        if (response.ok) {
-            document.getElementById('addContactForm').reset();
-            fetchContacts();
-        }
-    } catch (error) {
-        console.error('Error adding contact:', error);
-    }
-});
-
-// Edit contact
+// Add these functions for edit and delete functionality
 async function editContact(id) {
+    const token = checkAuth();
+    if (!token) return;
+
     const name = prompt('Enter new name:');
     const mobile = prompt('Enter new mobile:');
 
@@ -102,12 +96,15 @@ async function editContact(id) {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ name, mobile }),
             });
 
             if (response.ok) {
                 fetchContacts();
+            } else {
+                alert('Failed to update contact');
             }
         } catch (error) {
             console.error('Error updating contact:', error);
@@ -115,16 +112,23 @@ async function editContact(id) {
     }
 }
 
-// Delete contact
 async function deleteContact(id) {
+    const token = checkAuth();
+    if (!token) return;
+
     if (confirm('Are you sure you want to delete this contact?')) {
         try {
             const response = await fetch(`${API_URL}/contacts/${id}`, {
                 method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
 
             if (response.ok) {
                 fetchContacts();
+            } else {
+                alert('Failed to delete contact');
             }
         } catch (error) {
             console.error('Error deleting contact:', error);
@@ -132,5 +136,8 @@ async function deleteContact(id) {
     }
 }
 
-// Load contacts when page loads
+// ... rest of your existing code ...
+
+
+// Call fetchContacts when page loads
 fetchContacts();
