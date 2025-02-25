@@ -1,15 +1,15 @@
 const express = require("express");
+const app = express();
 const mysql = require("mysql2");
 const { body, validationResult } = require("express-validator");
+const cors = require("cors");
 const auth = require("./auth");
-require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-const app = express();
+
 app.use(express.json());
-
-const cors = require("cors");
 app.use(cors());
 app.use(express.static("client"));
 
