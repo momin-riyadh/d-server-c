@@ -1,7 +1,14 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
+// Add better SECRET_KEY handling
 const SECRET_KEY = process.env.JWT_SECRET;
+console.log('JWT_SECRET:', SECRET_KEY); // Temporary debug line
+
+if (!SECRET_KEY) {
+    console.error('ERROR: JWT_SECRET is not set in environment variables');
+    process.exit(1); // Stop the server if JWT_SECRET is missing
+}
 
 const auth = {
     generateToken(user) {
@@ -24,6 +31,7 @@ const auth = {
             req.user = decoded;
             next();
         } catch (error) {
+            console.error('Token verification failed:', error.message);
             res.status(401).json({ error: 'Invalid token' });
         }
     },

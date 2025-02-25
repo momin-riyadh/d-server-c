@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require('path');
 const app = express();
 const mysql = require("mysql2");
 const { body, validationResult } = require("express-validator");
@@ -6,8 +7,22 @@ const cors = require("cors");
 const auth = require("./auth");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+
+// Load environment variables - keep only one instance
 require("dotenv").config();
 
+// Debug environment variables
+console.log('Environment variables loaded:', {
+    JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+    JWT_SECRET_VALUE: process.env.JWT_SECRET
+});
+
+if (!process.env.JWT_SECRET) {
+    console.error('ERROR: JWT_SECRET is not set in environment variables');
+    process.exit(1);
+}
+
+// Rest of your code remains the same...
 
 app.use(express.json());
 app.use(cors());
@@ -160,29 +175,31 @@ const validateContact = [
     .withMessage("Invalid mobile number format"),
 ];
 
-// Create contact with validation and authorization
-app.post(
-  "/contacts",
-  auth.verifyToken,
-  auth.checkRole(["admin", "editor"]),
-  validateContact,
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
 
-    const { name, mobile } = req.body;
-    const query = "INSERT INTO contacts (name, mobile) VALUES (?, ?)";
-    connection.query(query, [name, mobile], (err, results) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
+// Create contact with validation and authorization
+app.post("/contacts", auth.verifyToken, auth.checkRole(["admin", "editor"]), validateContact, async (req, res) => {
+  console.log('User from token:', req.user);
+  try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+          return res.status(400).json({ errors: errors.array() });
       }
-      res.status(201).json({ id: results.insertId, name, mobile });
-    });
+
+      const { name, mobile } = req.body;
+      const query = "INSERT INTO contacts (name, mobile) VALUES (?, ?)";
+      
+      connection.query(query, [name, mobile], (err, results) => {
+          if (err) {
+              console.error('Database error:', err);
+              return res.status(500).json({ error: err.message });
+          }
+          res.status(201).json({ id: results.insertId, name, mobile });
+      });
+  } catch (error) {
+      console.error('Server error:', error);
+      res.status(500).json({ error: error.message });
   }
-);
+});
 
 // Read all contacts (with optional role-based filtering)
 app.get("/contacts", auth.verifyToken, (req, res) => {

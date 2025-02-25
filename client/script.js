@@ -1,5 +1,16 @@
 const API_URL = 'http://localhost:3000';
 
+function debugToken() {
+    const token = localStorage.getItem('authToken');
+    console.log('Current token:', token ? token.substring(0, 20) + '...' : 'No token');
+}
+
+// Add near the top of your file
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('authToken');
+    window.location.href = 'login.html';
+});
+
 // Check if user is authenticated
 function checkAuth() {
     const token = localStorage.getItem('authToken');
@@ -10,7 +21,7 @@ function checkAuth() {
     return token;
 }
 
-// Add new contact
+// Update the contact creation part
 document.getElementById('addContactForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const token = checkAuth();
@@ -18,6 +29,8 @@ document.getElementById('addContactForm').addEventListener('submit', async (e) =
 
     const name = document.getElementById('name').value;
     const mobile = document.getElementById('mobile').value;
+
+    console.log('Sending request with token:', token);
 
     try {
         const response = await fetch(`${API_URL}/contacts`, {
@@ -29,11 +42,18 @@ document.getElementById('addContactForm').addEventListener('submit', async (e) =
             body: JSON.stringify({ name, mobile }),
         });
 
+        const data = await response.json();
+        console.log('Server response:', data);
+
         if (response.ok) {
             document.getElementById('addContactForm').reset();
             fetchContacts();
         } else {
-            alert('Failed to create contact');
+            alert(`Failed to create contact: ${data.error || 'Unknown error'}`);
+            if (data.error === 'Invalid token') {
+                localStorage.removeItem('authToken');
+                window.location.href = 'login.html';
+            }
         }
     } catch (error) {
         console.error('Error adding contact:', error);
@@ -141,3 +161,4 @@ async function deleteContact(id) {
 
 // Call fetchContacts when page loads
 fetchContacts();
+debugToken();
